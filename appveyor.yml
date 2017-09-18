@@ -1,7 +1,6 @@
-# branches:
-#   only:
-#     - master
-build: off
+branches:
+  only:
+    - master
 environment:
   tag_name: "%APPVEYOR_REPO_TAG_NAME%"
   release_name: "certegy_ezipay_woocommerce_v%appveyor_repo_tag_name%.zip"
