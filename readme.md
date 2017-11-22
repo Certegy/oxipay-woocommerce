@@ -1,4 +1,6 @@
-# Certegy EziPay's WooCommerce Plugin [![Gitter](https://badges.gitter.im/ezipay/ezipay-woocommerce.svg)](https://gitter.im/ezipay/ezipay-woocommerce?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) [![Build status](https://ci.appveyor.com/api/projects/status/jgrgyfkq3147nh8l?svg=true)](https://ci.appveyor.com/project/ezipay/ezipay-woocommerce)
+# Certegy EziPay's WooCommerce Plugin 
+<!-- [![Gitter](https://badges.gitter.im/ezipay/ezipay-woocommerce.svg)](https://gitter.im/ezipay/ezipay-woocommerce?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)  -->
+[![Build status](https://ci.appveyor.com/api/projects/status/jgrgyfkq3147nh8l?svg=true)](https://ci.appveyor.com/project/Certegy/certegy-ezipay-woocommerce)
 
 ## Pre-requisites
 1. We've tested this on WordPress 4.6 - 4.8, but in theory is compatible with any WP instance that supports the latest version of the WooCommerce platform
