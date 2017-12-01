@@ -2,7 +2,7 @@
 /*
  * Plugin Name: Certegy EziPay Payment Gateway
  * Plugin URI: https://www.certegyezipay.com.au
- * Description: Easy to setup installment payment plans from <a href="https://certegyezipay.com.au">Certegy EziPay</a>.
+ * Description: Shop today, pay over time with <a href="https://certegyezipay.com.au">Certegy EziPay</a>. No Interest Ever!
  * Version: plugin_version_placeholder
  * Author: FlexiGroup
  * Author URI: https://www.certegyezipay.com.au

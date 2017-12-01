@@ -1,7 +1,7 @@
 === Certegy EziPay Payment Gateway for WooCommerce ===
 Tags: Certegy EziPay
 Requires at least: 4.0
-Tested up to: 4.8
+Tested up to: 4.9.1
 License: GNU General Public License v3.0
 
 Shop now and pay over time
