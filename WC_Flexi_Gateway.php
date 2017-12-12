@@ -522,6 +522,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                     case "completed":
                         $order->add_order_note(__( 'Payment approved using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce'));
                         $order->payment_complete($params['x_reference']);
+
                         if (!is_null($cart)) {
                             $cart->empty_cart();
                         }
@@ -601,7 +602,11 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
             $set_addresses = array_filter($countries);
             $countryCode = $this->getCountryCode();
             $countryName = $this->getCountryName();
-            $valid_addresses = (count(array_unique($set_addresses)) === 1 && end($set_addresses) === $countryCode);
+
+//            valid address is either:
+//                1. only have billing country or only ship country, or both have same country, and that country is the supported country in Oxipay setting;
+//                2. have no country at all in both billing and shipping address
+            $valid_addresses = ( (count(array_unique($set_addresses)) === 1 && end($set_addresses) === $countryCode) || count($set_addresses)===0 );
 
             if (!$valid_addresses) {
                 $errorMessage = "&nbsp;Orders from outside " . $countryName . " are not supported by " . $this->pluginDisplayName . ". Please select a different payment option.";
