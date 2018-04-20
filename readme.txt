@@ -43,9 +43,14 @@ Go to WooCommerce -> Settings -> Checkout -> Certegy EziPay
 https://certegyezipay.com.au
 
 == Changelog ==
+
+= 1.3.7 =
+*Release Date - 20 April 2018*
+* Disable price-widget when product price is outside of the specified price range.
+* Add defer to payments.js tag so that it does not block loading of the page.
+
 = 1.3.0 =
 *Release Date - 28 Sep 2017*
-
 Initial release to WordPress.org
 
 = 1.3.1 =
