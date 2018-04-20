@@ -57,7 +57,12 @@ class WC_CertegyEzipay_Gateway extends WC_Flexi_Gateway {
                     $country_domain = 'co.nz';
                 }
                 
-                echo '<script id="ezipay-price-info" src="https://widgets.certegyezipay.'.$country_domain.'/content/scripts/price-info.js?productPrice='.wc_get_price_to_display($product).'"></script>';
+                $minimum = $this->getMinPrice(); 
+                $maximum = $this->getMaxPrice(); 
+                $price = wc_get_price_to_display($product); 
+                if(($minimum == 0 || $price >= $minimum) && ($maximum == 0 || $price <= $maximum)) { 
+                    echo '<script defer id="ezipay-price-info" src="https://widgets.certegyezipay.'.$country_domain.'/content/scripts/payments.js?productPrice='.wc_get_price_to_display($product).'"></script>';
+                }
             }
         }
     }
