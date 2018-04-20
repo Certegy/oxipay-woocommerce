@@ -26,11 +26,11 @@ For more information please visit:
 https://certegyezipay.com.au
 
 == Installation ==
-= Pre-requisites -
+= Pre-requisites =
 A working WooCommerce (version >= 3.0) plugin installation
 
-= Other assumptions -
-You have received a Merchant ID and API key for use from Certegy EziPay's support team. You will also have received a payment gateway URL and a testing 'Sandbox' URL
+= Other assumptions =
+You have received a Merchant ID and API key for use from Certegy EziPay's support team.
 
 = Installation =
 Upload the Certegy EziPay plugin to your blog, Activate it.
