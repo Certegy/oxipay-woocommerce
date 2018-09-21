@@ -1,7 +1,7 @@
 === Certegy EziPay Payment Gateway for WooCommerce ===
 Tags: Certegy EziPay
 Requires at least: 4.0
-Tested up to: 4.9.1
+Tested up to: 4.9.5
 License: GNU General Public License v3.0
 
 Shop now and pay over time
@@ -26,11 +26,11 @@ For more information please visit:
 https://certegyezipay.com.au
 
 == Installation ==
-= Pre-requisites -
+= Pre-requisites =
 A working WooCommerce (version >= 3.0) plugin installation
 
-= Other assumptions -
-You have received a Merchant ID and API key for use from Certegy EziPay's support team. You will also have received a payment gateway URL and a testing 'Sandbox' URL
+= Other assumptions =
+You have received a Merchant ID and API key for use from Certegy EziPay's support team.
 
 = Installation =
 Upload the Certegy EziPay plugin to your blog, Activate it.
@@ -43,9 +43,14 @@ Go to WooCommerce -> Settings -> Checkout -> Certegy EziPay
 https://certegyezipay.com.au
 
 == Changelog ==
+
+= 1.3.6 =
+*Release Date - 20 April 2018*
+* Disable price-widget when product price is outside of the specified price range.
+* Add defer to payments.js tag so that it does not block loading of the page.
+
 = 1.3.0 =
 *Release Date - 28 Sep 2017*
-
 Initial release to WordPress.org
 
 = 1.3.1 =
