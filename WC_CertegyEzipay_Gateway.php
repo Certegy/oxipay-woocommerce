@@ -12,6 +12,8 @@ class WC_CertegyEzipay_Gateway extends WC_Flexi_Gateway {
         const PLUGIN_NO_MERCHANT_ID_SET_LOG_MSG = 'Transaction attempted with no Merchant ID key. Please check Certegy EziPay plugin configuration, and provide an Merchant ID.';
         const PLUGIN_NO_REGION_LOG_MSG = 'Transaction attempted with no Certegy EziPay region set. Please check Certegy EziPay plugin configuration, and provide an Certegy EziPay region.';
 
+        public $shop_details;
+
         function __construct() {
             $config = new Ezipay_Config();
 
