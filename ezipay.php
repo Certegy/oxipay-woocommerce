@@ -40,6 +40,8 @@ function add_ezipay_query_vars_filter( $vars ){
 }
 /**
 * Look for an ajax request that wants settings
+ * @param @query
+ * @return null
 */
 function get_ezipay_settings($query) {
 
@@ -52,6 +54,7 @@ function get_ezipay_settings($query) {
     $list = $gateways->payment_gateways();
     if (!$list || !isset($list['ezipay'])) {
         // abort
+        return;
     }
 
     $ezipay = $list['ezipay'];
@@ -60,6 +63,7 @@ function get_ezipay_settings($query) {
         $settings = $ezipay->get_settings();
         wp_send_json($settings);
     }
+    return;
 }
 
 function ezipay_settings_link($links){

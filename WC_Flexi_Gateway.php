@@ -4,18 +4,20 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         public $plugin_current_version;
         
         public $logger = null;
+        private $logContext;
 
         protected $currentConfig = null;
-        protected $pluginDisplayName    = null;
+        protected $pluginDisplayName = null;
         protected $pluginFileName= null;
-        
+        protected $flexi_payment_preselected = false;
+
         function __construct($config) {
 
             $this->currentConfig     = $config;
             $this->pluginDisplayName = $config->getDisplayName();
 	        $this->pluginFileName    = strtolower($config->getPluginFileName());
-            
-            // where available we can use logging to assist with debugging			
+
+            // where available we can use logging to assist with debugging
             if (function_exists('wc_get_logger')) {
                 $this->logger = wc_get_logger();
                 $this->logContext = array( 'source' => $this->pluginDisplayName );
@@ -44,15 +46,31 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
             }
 
             add_action('woocommerce_update_options_payment_gateways_' . $this->id, array($this, 'process_admin_options' ) );
+	        add_action('wp_footer', array($this,'add_top_banner_widget' ));
             add_action('woocommerce_single_product_summary', array($this, 'add_price_widget'));
             add_filter('woocommerce_thankyou_order_id', array($this,'payment_finalisation' ));
             add_filter('the_title', array( $this,'order_received_title'), 11 );
             add_action('woocommerce_before_checkout_form', array($this, 'display_min_max_notice'));
             add_action('woocommerce_before_cart', array($this, 'display_min_max_notice'));
             add_filter('woocommerce_available_payment_gateways', array($this,'display_min_max_filter'));
+            add_filter('woocommerce_available_payment_gateways', array($this, 'preselect_flexi'));
+            add_filter('woocommerce_thankyou_order_received_text', array($this, 'thankyou_page_message'));
+
+            $preselect_button_order = $this->settings["preselect_button_order"]? $this->settings["preselect_button_order"] : '20';
+            add_action('woocommerce_proceed_to_checkout', array($this, "flexi_checkout_button"), $preselect_button_order);            
         }
 
         abstract public function add_price_widget();
+
+        function flexi_checkout_button(){
+            $button_color = array(
+                "oxipay" => "E68821",
+                "ezipay" => "4EB0E6"
+            );
+            if($this->settings["preselect_button_enabled"] == "yes"){
+                echo '<div><a href="'.esc_url( wc_get_checkout_url() ).'?'.$this->pluginDisplayName.'_preselected=true" class="checkout-button button" style="font-size: 1.2em; padding-top: 0.4em; padding-bottom: 0.4em; background-color: #' . $button_color[$this->pluginFileName] . '; color: #FFF;">Check out with '.$this->pluginDisplayName.'</a></div>';
+            }
+        }
 
         function display_min_max_notice(){
 	        $minimum = $this->getMinPrice();
@@ -101,7 +119,24 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
 			        unset($available_gateways[$this->pluginFileName]);
 		        }
             }
-	        return $available_gateways;
+            return $available_gateways;
+        }
+
+        function preselect_flexi($available_gateways){
+            if( isset( $_GET[$this->pluginDisplayName."_preselected"] ) ) {
+                $this->flexi_payment_preselected = $_GET[$this->pluginDisplayName."_preselected"];
+            }
+
+            if ( ! empty( $available_gateways ) ) {
+                if( $this->flexi_payment_preselected == "true" ){
+                    foreach ( $available_gateways as $gateway ) {
+                        if( strtolower($gateway->id) == $this->pluginFileName ) {
+                            WC()->session->set('chosen_payment_method', $gateway->id);
+                        }
+                    }
+                }
+            }
+            return $available_gateways;
         }
 
         /**
@@ -110,10 +145,10 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
          * @param string $message Message log
          * @param string $level  WC_Log_Levels
          */
-        public function log( $message, $level=WC_Log_Levels::DEBUG) {	
+        public function log( $message, $level=WC_Log_Levels::DEBUG) {
             if ($this->logger != null) {
                 $this->logger->log($level, $message, $this->logContext);
-            }	
+            }
         }
 
         /**
@@ -132,8 +167,8 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         function init_form_fields() {
             //Build options for the country select field from the config
             $countryOptions = array('' => __( 'Please select...', 'woocommerce' ));
-            
-            
+
+
             foreach( $this->currentConfig->countries as $countryCode => $country ){
                  $countryOptions[$countryCode] = __( $country['name'], 'woocommerce' );
             }
@@ -146,14 +181,6 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                     'default' 		=> 'yes',
                     'description'	=> 'Disable '.$this->pluginDisplayName . ' services, your customers will not be able to use our easy installment plans.',
                     'desc_tip'		=> true
-                ),
-                'price_widget'                           => array(
-	                'title' 		=> __( 'Price Widget', 'woocommerce' ),
-	                'type' 			=> 'checkbox',
-	                'label' 		=> __( 'Enable the ' . $this->pluginDisplayName . ' Price Widget', 'woocommerce' ),
-	                'default' 		=> 'yes',
-	                'description'	=> 'Display a price widget in each product page.',
-	                'desc_tip'		=> true
                 ),
                 'shop_name'                              => array(
                     'title' 		=> __( 'Shop Name', 'woocommerce' ),
@@ -176,7 +203,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
 	                'type' 			=> 'checkbox',
 	                'label' 		=> __( 'Use Test Mode', 'woocommerce' ),
 	                'default' 		=> 'yes',
-	                'description'	=> __('While test mode is enabled, transactions will be simulated and cards will not be charged', 'woocommerce' ),
+	                'description'	=> __( 'While test mode is enabled, transactions will be simulated and cards will not be charged', 'woocommerce' ),
 	                'desc_tip'		=> true
                 ),
                 'use_modal'                              => array(
@@ -184,7 +211,47 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                     'type' 			=> 'checkbox',
                     'label' 		=> __( 'Modal Checkout', 'woocommerce' ),
                     'default' 		=> 'no',
-                    'description'	=> __('The customer will be forwarded to '.$this->pluginDisplayName . ' in a modal dialog', 'woocommerce' ),
+                    'description'	=> __( 'The customer will be forwarded to '.$this->pluginDisplayName . ' in a modal dialog', 'woocommerce' ),
+                    'desc_tip'		=> true
+                ),
+                'price_widget'                           => array(
+	                'title' 		=> __( 'Price Widget', 'woocommerce' ),
+	                'type' 			=> 'checkbox',
+	                'label' 		=> __( 'Enable the ' . $this->pluginDisplayName . ' Price Widget', 'woocommerce' ),
+	                'default' 		=> 'yes',
+	                'description'	=> 'Display a price widget in each product page.',
+	                'desc_tip'		=> true
+                ),
+                'top_banner_widget' => array(
+	                'title' 		=> __( 'Top Banner Widget', 'woocommerce' ),
+	                'type' 			=> 'checkbox',
+	                'label' 		=> __( 'Enable the ' . $this->pluginDisplayName . ' Top Banner Widget (AU Only)', 'woocommerce' ),
+	                'default' 		=> 'no',
+	                'description'	=> 'Display a top banner. (For AU only. NZ does not have this feature)',
+	                'desc_tip'		=> true
+                ),
+                'top_banner_widget_homepage_only'     => array(
+	                'title' 		=> __( 'Top Banner on FrontPage Only', 'woocommerce' ),
+	                'type' 			=> 'checkbox',
+	                'label' 		=> __( $this->pluginDisplayName . ' Top Banner Widget Shows on FrontPage Only (AU Only)', 'woocommerce' ),
+	                'default' 		=> 'yes',
+	                'description'	=> 'When the top banner enabled, it shows in homepage only (if checked), or shows in every page (if unchecked)',
+	                'desc_tip'		=> true
+                ),
+                'preselect_button_enabled'            => array(
+                    'title' 		=> __( 'Pre-select Checkout Button', 'woocommerce' ),
+                    'type' 			=> 'checkbox',
+                    'label' 		=> __( 'Add a "Checkout with '.$this->pluginDisplayName.'" button in Cart page', 'woocommerce' ),
+                    'default' 		=> 'yes',
+                    'description'	=> __( 'Add a "Checkout with '.$this->pluginDisplayName.'" button in Cart page that takes customer to Checkout page and have '. $this->pluginDisplayName . ' pre-selected', 'woocommerce' ),
+                    'desc_tip'		=> true
+                ),
+                'preselect_button_order'              => array(
+                    'title' 		=> __( 'Pre-select Button Order', 'woocommerce' ),
+                    'type' 			=> 'text',
+                    'label' 		=> __( 'Pre-select Button Order', 'woocommerce' ),
+                    'default' 		=> '20',
+                    'description'	=> __( 'Position the "checkout with '.$this->pluginDisplayName.' button" in Cart page if there are multiple checkout buttons. Default is 20. Smaller number moves the button ahead and larger number moves it lower in the list of checkout buttons.', 'woocommerce' ),
                     'desc_tip'		=> true
                 ),
                 "{$this->pluginFileName}_merchant_id" => array(
@@ -254,20 +321,42 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
             if (version_compare( $currentDbVersion, '1.2.0') < 0) {
                 if (!isset($this->settings['use_modal'])) {
                     // default to the redirect for existing merchants
-                    // so we don't break the existing behaviour                
+                    // so we don't break the existing behaviour
                     $this->settings['use_modal'] = false;
                     $this->updateSetting('use_modal', $this->settings['use_modal']);
                 }
-
                 $minField = sprintf('%s_minimum', $this->pluginFileName);
                 $maxField = sprintf('%s_maximum', $this->pluginFileName);
                 if (!isset($this->settings[$minField])) {
                     $this->updateSetting('use_modal', $this->settings[$minField]);
                 }
-
                 if (!isset($this->settings[$maxField])) {
                     $this->updateSetting('use_modal', $this->settings[$maxField]);
                 }
+            } elseif (version_compare( $currentDbVersion, '1.3.5') < 0) {
+                if (!isset($this->settings['preselect_button_enabled'])) {
+	                // default to the disable the pre-select checkout button for existing merchants
+	                // so we don't break the existing behaviour
+	                $this->settings['preselect_button_enabled'] = "no";
+	                $this->updateSetting( 'preselect_button_enabled', $this->settings['preselect_button_enabled'] );
+                }
+                if (!isset($this->settings['preselect_button_order'])){
+	                // set default to 20 for pre-select button sequence
+                    $this->settings['preselect_button_order'] = "20";
+                    $this->updateSetting('preselect_button_order', $this->settings['preselect_button_order']);
+                }
+            } elseif (version_compare( $currentDbVersion, '1.3.14') < 0) {
+	            if (!isset($this->settings['top_banner_widget'])) {
+		            // default to the disable the pre-select checkout button for existing merchants
+		            // so we don't break the existing behaviour
+		            $this->settings['top_banner_widget'] = "no";
+		            $this->updateSetting( 'top_banner_widget', $this->settings['top_banner_widget'] );
+	            }
+	            if (!isset($this->settings['top_banner_widget_homepage_only'])){
+		            // set default to 20 for pre-select button sequence
+		            $this->settings['top_banner_widget_homepage_only'] = "20";
+		            $this->updateSetting('top_banner_widget_homepage_only', $this->settings['top_banner_widget_homepage_only']);
+	            }
             }
 
             return true;
@@ -305,10 +394,9 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
          * Generates the payment gateway request parameters and signature and redirects to the
          * payment gateway through the invisible processing.php form
          * @param int $order_id
-         * @return next view array
+         * @return array
          */
         function process_payment( $order_id ) {
-            global $woocommerce;
             $order = new WC_Order( $order_id );
             $gatewayUrl = $this->getGatewayUrl();
 
@@ -318,7 +406,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
             $isValid = $isValid && $this->checkOrderAmount($order);
             $isValid = $isValid && !is_null($gatewayUrl) && $gatewayUrl != '';
 
-            if(!$isValid) return;
+            if(!$isValid) return array();
 
             $callbackURL  = $this->get_return_url($order);
 
@@ -328,7 +416,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                 'x_amount'                      => $order->get_total(),
                 'x_currency'                    => $this->getCurrencyCode(),
                 'x_url_callback'                => $callbackURL,
-                'x_url_complete'                => $this->get_return_url( $order ),
+                'x_url_complete'                => $callbackURL,
                 'x_url_cancel'                  => $order->get_cancel_order_url_raw(),
                 'x_test'                        => 'false',
                 'x_shop_country'                => $this->getCountryCode(),
@@ -347,33 +435,20 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                 'x_customer_billing_zip' 		=> $order->get_billing_postcode(),
                 //shipping detail
                 'x_customer_shipping_country'	=> $order->get_billing_country(),
-                 'x_customer_shipping_city' 	=> $order->get_shipping_city(),
+                'x_customer_shipping_city' 	    => $order->get_shipping_city(),
                 'x_customer_shipping_address1'  => $order->get_shipping_address_1(),
                 'x_customer_shipping_address2'  => $order->get_shipping_address_2(),
                 'x_customer_shipping_state' 	=> $order->get_shipping_state(),
                 'x_customer_shipping_zip' 		=> $order->get_shipping_postcode(),
                 'gateway_url' 					=> $gatewayUrl
-            );  
+            );
 
             $signature = $this->flexi_sign($transaction_details, $this->settings[ $this->pluginFileName . '_api_key']);
             $transaction_details['x_signature'] = $signature;
-        
-            $encodedFields = array(
-                'x_url_callback',
-                'x_url_complete',
-                'gateway_url',
-                'x_url_cancel',
-                'x_customer_email'
-            );
-        
-            // before we do the redirect we base64encode the urls to hopefully get around some of the 
-            // limitations with platforms using mod_security 
-            // foreach ($encodedFields as $key ) {
-            //     $transaction_details[$key] = base64_encode($transaction_details[$key]);
-            // }
+
             // use RFC 3986 so that we can decode it correctly in js
             $qs = http_build_query($transaction_details, null, '&', PHP_QUERY_RFC3986);
-            
+
             return array(
                 'result' 	=>  'success',
                 'redirect'	=>  $gatewayUrl.'&'.$qs
@@ -386,7 +461,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
          */
         private function verifyConfiguration($order)
         {
-            
+
             $apiKey     = $this->settings[ $this->pluginFileName . '_api_key' ];
             $merchantId = $this->settings[ $this->pluginFileName . '_merchant_id' ];
             $region     = $this->settings['country'];
@@ -420,6 +495,8 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
 
         /**
          * returns the gateway URL
+         * @param $countryCode
+         * @return string
          */
         private function getGatewayUrl($countryCode='') {
             //if no countryCode passed in
@@ -430,7 +507,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
 		            $countryCode = 'AU';
 	            }
             }
-            
+
             $url = $this->currentConfig->countries[$countryCode]['sandboxURL'];
             if($this->isTesting() == 'no'){
                 $url = $this->currentConfig->countries[$countryCode]['liveURL'];
@@ -444,10 +521,10 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
          */
         function admin_options() { ?>
             <h2><?php _e($this->pluginDisplayName,'woocommerce'); ?></h2>
-            
+
             <p><?php _e($this->method_description, 'woocommerce' ); ?></p>
             <p>For help setting this plugin up please contact our integration team.</p>
-            
+
             <table class="form-table">
             <?php $this->generate_settings_html(); ?>
             </table>
@@ -476,12 +553,12 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         function payment_finalisation($order_id)
         {
             $order = wc_get_order($order_id);
-            $cart  = WC()->session->get('cart', null);
+            $cart = WC()->cart;
 
             $isJSON = ($_SERVER['REQUEST_METHOD'] === "POST" && isset($_SERVER['CONTENT_TYPE']) &&
                        (strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) );
 
-            // This addresses the callback. 
+            // This addresses the callback.
             if ($isJSON) {
                 $params = json_decode(file_get_contents('php://input'), true);
             } else {
@@ -491,9 +568,9 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                 }
 
                 $full_url = sprintf(
-                    '%s://%s%s', 
-                    $scheme, 
-                    $_SERVER['HTTP_HOST'], 
+                    '%s://%s%s',
+                    $scheme,
+                    $_SERVER['HTTP_HOST'],
                     $_SERVER['REQUEST_URI']
                 );
                 $parts = parse_url($full_url, PHP_URL_QUERY);
@@ -518,38 +595,42 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
             if ($this->checksign($params, $this->settings[ $this->pluginFileName . '_api_key'])) {
                 $this->log(sprintf('Processing orderId: %s ', $order_id));
                 // Get the status of the order from XPay and handle accordingly
+                $flexi_result_note = '';
                 switch ($params['x_result']) {
                     case "completed":
-                        $order->add_order_note(__( 'Payment approved using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce'));
+                        $flexi_result_note = __( 'Payment approved using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce');
+                        $order->add_order_note($flexi_result_note);
                         $order->payment_complete($params['x_reference']);
-
-                        if (!is_null($cart)) {
+                        
+                        if (!is_null($cart) && !empty($cart)) {
                             $cart->empty_cart();
                         }
                         $msg = 'complete';
                         break;
 
                     case "failed":
-                        $order->add_order_note(__( 'Payment declined using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce'));
+                        $flexi_result_note = __( 'Payment declined using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce');
+                        $order->add_order_note($flexi_result_note);
                         $order->update_status('failed');
                         $msg = 'failed';
+                        $_SESSION['flexi_result'] = 'failed';
                         break;
 
-                    case "pending":
-                        $order->add_order_note(__( 'Payment pending using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce'));
+                    case "error":
+                        $flexi_result_note = __( 'Payment error using ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference'], 'woocommerce');
+                        $order->add_order_note($flexi_result_note);
                         $order->update_status('on-hold', 'Error may have occurred with ' . $this->pluginDisplayName . '. Reference #' . $params['x_gateway_reference']);
-                        $msg = 'failed';
+                        $msg = 'error';
+                        $_SESSION['flexi_result'] = 'error';
                         break;
                 }
-
-                return $order_id;
+                $_SESSION['flexi_result_note'] = $flexi_result_note;
             }
             else
             {
                 $order->add_order_note(__( $this->pluginDisplayName . ' payment response failed signature validation. Please check your Merchant Number and API key or contact '.$this->pluginDisplayName . ' for assistance.', 0, 'woocommerce'));
-                $order->add_order_note(__( 'Payment declined using ' . $this->pluginDisplayName . '. Your Order ID is ' . $order_id, 'woocommerce'));
-                $order->update_status('failed');
-                $msg = 'failed';
+                $msg = "signature error";
+                $_SESSION['flexi_result_note'] = $this->pluginDisplayName . ' signature error';
             }
 
             if ($isJSON) {
@@ -558,6 +639,13 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
                     'id'		=> $order_id
                 );
                 wp_send_json($return);
+            }
+	        return $order_id;
+        }
+
+        function thankyou_page_message($original_message){
+            if ($_SESSION['flexi_result_note'] != ''){
+                return $_SESSION['flexi_result_note'];
             }
         }
 
@@ -595,7 +683,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         private function checkCustomerLocation($order)
         {
             // The following get shipping and billing countries, and filters null or empty values
-            // Then we check to see if there is just a single unique value that is equal to AU, otherwise we 
+            // Then we check to see if there is just a single unique value that is equal to AU, otherwise we
             // display an error message.
 
             $countries = array($order->get_billing_country(), $order->get_shipping_country());
@@ -604,7 +692,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
             $countryName = $this->getCountryName();
 
 //            valid address is either:
-//                1. only have billing country or only ship country, or both have same country, and that country is the supported country in Oxipay setting;
+//                1. only have billing country or only ship country, or both have same country, and that country is the supported country in flexi setting;
 //                2. have no country at all in both billing and shipping address
             $valid_addresses = ( (count(array_unique($set_addresses)) === 1 && end($set_addresses) === $countryCode) || count($set_addresses)===0 );
 
@@ -619,17 +707,29 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
 
         /**
          * Ensure the order amount is >= $20
+         * Also ensure order is <= max_purchase
          * @param $order
          * @return true
          */
         private function checkOrderAmount($order)
         {
-            if($order->get_total() < 20) {
-                $errorMessage = "&nbsp;Orders under " . $this->getCurrencyCode() . $this->getCurrencySymbol() . "20 are not supported by " . $this->pluginDisplayName . ". Please select a different payment option.";
+            $total = $order->get_total();
+            $min = $this->getMinPurchase();
+            if ($total < $min) {
+                $errorMessage = "&nbsp;Orders under " . $this->getCurrencyCode() . $this->getCurrencySymbol() . $min . " are not supported by " . $this->pluginDisplayName . ". Please select a different payment option.";
                 $order->cancel_order($errorMessage);
                 $this->logValidationError($errorMessage);
                 return false;
             }
+
+            $max = $this->getMaxPurchase();
+            if ($total > $max) {
+                $errorMessage = "&nbsp;Orders over " . $this->getCurrencyCode() . $this->getCurrencySymbol() . $max . " are not supported by " . $this->pluginDisplayName . ". Please select a different payment option.";
+                $order->cancel_order($errorMessage);
+                $this->logValidationError($errorMessage);
+                return false;
+            }
+
             return true;
         }
 
@@ -644,7 +744,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         {
             return isset($this->settings['use_test'])? $this->settings['use_test']: 'no';
         }
-        
+
         /**
          * @return string
          */
@@ -675,36 +775,14 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         }
 
         /**
-         * @return string
+         * @return int 
          */
-//        private function getBaseUrl() {
-//            $tld = $this->currentConfig->countries[$this->getCountryCode()]['tld'];
-//            $displayName = $this->pluginDisplayName;
-//            if($this->is_null_or_empty($tld)) {
-//                $tld = ".com.au";
-//            }
-//
-//            return "https://{$displayName}{$tld}";
-//        }
-//
-//        /**
-//         * @return string
-//         */
-//        private function getSupportUrl() {
-//            $baseUrl = $this->getBaseUrl();
-//
-//            return "$baseUrl/contact";
-//        }
+        private function getMaxPurchase() {
+            return $this->currentConfig->countries[$this->getCountryCode()]['max_purchase'];
+        }
 
-        /**
-         * Return the default gateway URL for the given country code.
-         * If no country code is provided, use the currently set country.
-         * Default to Australia if no country or an invalid country is set.
-         * @param $str
-         * @return string
-         */
-        private function getDefaultGatewayUrl($countryCode = false){
-            $this->getGatewayUrl($this->getCountryCode());
+        private function getMinPurchase() {
+            return $this->currentConfig->countries[$this->getCountryCode()]['min_purchase'];
         }
 
         /**
@@ -750,7 +828,7 @@ abstract class WC_Flexi_Gateway extends WC_Payment_Gateway {
         function checksign($query, $api_key)
         {
             if (!isset($query['x_signature'])) {
-                return;
+                return false;
             }
             $actualSignature = $query['x_signature'];
             unset($query['x_signature']);
