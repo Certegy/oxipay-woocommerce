@@ -15,6 +15,8 @@ class Ezipay_Config {
             'tld'			    => '.com.au',
             'sandboxURL'        => 'https://securesandbox.certegyezipay.com.au/Checkout?platform=WooCommerce',
             'liveURL'           => 'https://secure.certegyezipay.com.au/Checkout?platform=WooCommerce',
+            'max_purchase'      => 10000,
+            'min_purchase'      => 100,
         ),
         self::COUNTRY_NEW_ZEALAND => array (
             'name'				=> 'New Zealand',
@@ -23,6 +25,8 @@ class Ezipay_Config {
             'tld'		  	    => '.co.nz',
             'sandboxURL'        => 'https://securesandbox.certegyezipay.co.nz/Checkout?platform=WooCommerce',
             'liveURL'           => 'https://secure.certegyezipay.co.nz/Checkout?platform=WooCommerce',
+            'max_purchase'      => 10000,
+            'min_purchase'      => 100,
         )        
     );
 

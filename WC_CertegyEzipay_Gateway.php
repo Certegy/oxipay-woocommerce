@@ -16,15 +16,15 @@ class WC_CertegyEzipay_Gateway extends WC_Flexi_Gateway {
 
     function __construct() {
         $config = new Ezipay_Config();
+        parent::__construct($config);
 
         $this->method_description = __( 'Easy to setup installment payment plans from ' . $config::DISPLAY_NAME );
         $this->title              = __( $config::DISPLAY_NAME , 'woocommerce' );
         $this->description        = __( 'No Interest Ever!.</strong><br/> Shop today, pay over time with Certegy Ezi-Pay', 'woocommerce' );
         $this->icon               = plugin_dir_url( __FILE__ ) .  'images/ezipay.png';
         $this->shop_details       = __($config::DISPLAY_NAME . ' Payment', 'woocommerce' );
-        $this->order_button_text      = __( 'Proceed to ' . $config::DISPLAY_NAME, 'woocommerce' );
+        $this->order_button_text  = __( 'Proceed to ' . $config::DISPLAY_NAME, 'woocommerce' );
 
-        parent::__construct($config);
     }
 
     /**
@@ -67,5 +67,9 @@ class WC_CertegyEzipay_Gateway extends WC_Flexi_Gateway {
         //         echo '<script id="ezipay-price-info" src="https://widgets.certegyezipay.'.$country_domain.'/content/scripts/payments.js?productPrice='.wc_get_price_to_display($product).'"></script>';
         //     }
         // }
+    }
+
+    function add_top_banner_widget(){
+        return;
     }
 }
